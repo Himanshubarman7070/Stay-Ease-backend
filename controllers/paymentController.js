@@ -1,5 +1,6 @@
 import MealCancellation from '../models/MealCancellation.js';
 import TiffinPayment from '../models/TiffinPayment.js';
+import GroceryOrder from '../models/GroceryOrder.js';
 import { TIFFIN_CHARGE } from '../utils/mealUtils.js';
 
 const buildBreakdown = (cancellations) => {
@@ -11,17 +12,35 @@ const buildBreakdown = (cancellations) => {
 };
 
 export const submitPayment = async (req, res) => {
-  const { paymentDate, notes } = req.body;
-  const pendingPayment = await TiffinPayment.findOne({ userId: req.user._id, status: 'Pending' });
-  if (pendingPayment) {
-    return res.status(400).json({ success: false, message: 'You already have a pending payment awaiting admin approval' });
+  const { paymentDate, notes, groceryOrderIds } = req.body;
+
+  // Mark grocery orders as payment-pending
+  if (groceryOrderIds?.length) {
+    await GroceryOrder.updateMany(
+      { _id: { $in: groceryOrderIds }, userId: req.user._id, isPaid: false },
+      { paymentPending: true }
+    );
   }
-  const unpaid = await MealCancellation.find({ userId: req.user._id, isPaid: false });
-  if (!unpaid.length) {
+
+  const unpaid = await MealCancellation.find({ userId: req.user._id, isPaid: false, chargeAmount: { $gt: 0 } });
+
+  // If no tiffin charges and no grocery, nothing to submit
+  if (!unpaid.length && !groceryOrderIds?.length) {
     return res.status(400).json({ success: false, message: 'No pending charges' });
   }
+
+  // If only grocery dues (no tiffin), return success without creating TiffinPayment
+  if (!unpaid.length) {
+    return res.status(201).json({ success: true, data: null, message: 'Grocery payment submitted — admin will confirm' });
+  }
+
+  const pendingPayment = await TiffinPayment.findOne({ userId: req.user._id, status: 'Pending' });
+  if (pendingPayment) {
+    return res.status(400).json({ success: false, message: 'You already have a pending tiffin payment awaiting admin approval' });
+  }
+
   const breakdown = buildBreakdown(unpaid);
-  const amount = unpaid.length * TIFFIN_CHARGE;
+  const amount = unpaid.reduce((sum, c) => sum + c.chargeAmount, 0);
   const payment = await TiffinPayment.create({
     userId: req.user._id,
     amount,
@@ -38,7 +57,7 @@ export const submitPayment = async (req, res) => {
 
 export const getMyPayments = async (req, res) => {
   const payments = await TiffinPayment.find({ userId: req.user._id }).sort({ createdAt: -1 });
-  const unpaid = await MealCancellation.find({ userId: req.user._id, isPaid: false });
+  const unpaid = await MealCancellation.find({ userId: req.user._id, isPaid: false, chargeAmount: { $gt: 0 } });
   const totalDue = unpaid.reduce((s, c) => s + c.chargeAmount, 0);
   const pendingPayments = payments.filter((p) => p.status === 'Pending');
   const pendingAmount = pendingPayments.reduce((s, p) => s + p.amount, 0);
@@ -95,7 +114,7 @@ export const getPaymentStats = async (req, res) => {
     { $match: { status: 'Completed' } },
     { $group: { _id: null, total: { $sum: '$amount' } } },
   ]);
-  const allUnpaid = await MealCancellation.find({ isPaid: false });
+  const allUnpaid = await MealCancellation.find({ isPaid: false, chargeAmount: { $gt: 0 } });
   const totalDueAll = allUnpaid.reduce((s, c) => s + c.chargeAmount, 0);
 
   res.json({

@@ -1,4 +1,6 @@
 import Food from '../models/Food.js';
+import MealDeliveryStatus from '../models/MealDeliveryStatus.js';
+import MealCancellation from '../models/MealCancellation.js';
 
 const startOfDay = (d = new Date()) => {
   const date = new Date(d);
@@ -35,6 +37,15 @@ export const getAllFood = async (req, res) => {
 
 export const createFood = async (req, res) => {
   const food = await Food.create(req.body);
+
+  // Reset delivery status for this meal category on the food's date.
+  // Ensures customers always see "Pending" when new food is published,
+  // not a stale "Delivered" state from previous test data.
+  const day = startOfDay(new Date(food.date));
+  const mealType = food.category; // category matches mealType ('breakfast','lunch','dinner')
+  await MealDeliveryStatus.deleteMany({ date: day, mealType });
+  await MealCancellation.deleteMany({ date: day, mealType, status: 'Delivered' });
+
   res.status(201).json({ success: true, data: food });
 };
 

@@ -30,6 +30,7 @@ const groceryOrderSchema = new mongoose.Schema(
     deliveryAddress: { type: String, default: "" },
     isPaid: { type: Boolean, default: false },
     paidAt: { type: Date },
+    paymentPending: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

@@ -73,8 +73,9 @@ const createMealCancellation = async (userId, plan, date, mealType, period, reas
     date: day,
     mealType,
     period,
-    chargeAmount: TIFFIN_CHARGE,
+    chargeAmount: 0,
     reason,
+    status: 'Cancelled',
   });
 };
 
@@ -98,7 +99,7 @@ export const cancelMeal = async (req, res) => {
       reason,
       schedule
     );
-    res.status(201).json({ success: true, data: cancellation, message: `₹${TIFFIN_CHARGE} added to due` });
+    res.status(201).json({ success: true, data: cancellation, message: 'Meal cancelled successfully. No charge applied.' });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
@@ -143,7 +144,7 @@ export const cancelMealBulk = async (req, res) => {
   res.status(201).json({
     success: true,
     data: { created, errors },
-    message: `${created.length} meal(s) cancelled. ₹${created.length * TIFFIN_CHARGE} added to due`,
+    message: `${created.length} meal(s) cancelled successfully. No charges applied.`,
   });
 };
 
@@ -164,6 +165,7 @@ const resolveMealStatus = async (userId, date, mealType) => {
   const cancelled = await MealCancellation.findOne({
     userId,
     date: day,
+    status: 'Cancelled',
     $or: [{ mealType }, { mealType: mealType === 'breakfast' ? 'morning' : mealType === 'dinner' ? 'night' : mealType }],
   });
   if (cancelled) return 'Cancelled';
@@ -231,6 +233,28 @@ export const updateMealDeliveryStatus = async (req, res) => {
   if (!mealTypes.includes(mealType)) {
     return res.status(400).json({ success: false, message: 'Invalid meal type' });
   }
+  // Manage delivery charge: only charge when admin marks as Delivered
+  const existingCharge = await MealCancellation.findOne({ userId, date: day, mealType });
+  if (status === 'Delivered') {
+    // Only add charge if the customer did NOT cancel this meal
+    if (!existingCharge || existingCharge.status !== 'Cancelled') {
+      const plan = await TiffinRequest.findOne({ userId, isActive: true, status: 'Accepted' });
+      await MealCancellation.findOneAndUpdate(
+        { userId, date: day, mealType },
+        {
+          $setOnInsert: { userId, date: day, mealType, tiffinRequestId: plan?._id },
+          $set: { chargeAmount: TIFFIN_CHARGE, isPaid: false, status: 'Delivered' },
+        },
+        { upsert: true, new: true }
+      );
+    }
+  } else if (status === 'Pending') {
+    // Revert: remove delivery charge record if admin un-marks a delivery
+    if (existingCharge && existingCharge.status === 'Delivered') {
+      await MealCancellation.deleteOne({ _id: existingCharge._id });
+    }
+  }
+
   let record = await MealDeliveryStatus.findOne({ userId, date: day, mealType });
   if (!record) {
     record = new MealDeliveryStatus({ userId, date: day, mealType, status });
@@ -244,8 +268,9 @@ export const updateMealDeliveryStatus = async (req, res) => {
 };
 
 export const buildSummary = async (userId) => {
-  const cancellations = await MealCancellation.find({ userId });
-  const unpaid = cancellations.filter((c) => !c.isPaid);
+  const cancellations = await MealCancellation.find({ userId, status: 'Cancelled' });
+  const deliveryCharges = await MealCancellation.find({ userId, status: 'Delivered' });
+  const unpaid = deliveryCharges.filter((c) => !c.isPaid);
   const pendingPayments = await TiffinPayment.find({ userId, status: 'Pending' });
   const pendingPaymentAmount = pendingPayments.reduce((s, p) => s + p.amount, 0);
   const breakdown = { breakfast: 0, lunch: 0, dinner: 0, morning: 0, night: 0, total: 0 };

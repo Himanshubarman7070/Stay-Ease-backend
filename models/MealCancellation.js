@@ -15,7 +15,7 @@ const mealCancellationSchema = new mongoose.Schema(
     isPaid: { type: Boolean, default: false },
     paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'TiffinPayment' },
     reason: { type: String, default: '' },
-    status: { type: String, enum: ['Cancelled'], default: 'Cancelled' },
+    status: { type: String, enum: ['Cancelled', 'Delivered'], default: 'Cancelled' },
   },
   { timestamps: true }
 );
