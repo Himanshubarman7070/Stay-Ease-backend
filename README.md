@@ -8,60 +8,44 @@ REST API for the StayEase Smart Tiffin & Grocery Management System.
 - MongoDB (via Mongoose)
 - JWT Authentication
 
-## Prerequisites
-
-- [Node.js](https://nodejs.org/) v18 or higher
-- A MongoDB database (free tier on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) works)
-
-## Local Setup
-
-### 1. Clone the repository
+## Quick Start (Local)
 
 ```bash
 git clone https://github.com/Himanshubarman7070/Stay-Ease-backend.git
 cd Stay-Ease-backend
-```
-
-### 2. Install dependencies
-
-```bash
 npm install
+npm run dev
 ```
 
-### 3. Configure environment variables
+The API will be available at `http://localhost:5000/api`.
 
-```bash
-cp .env.example .env
-```
+> A working `.env` is included in the repo for local development.  
+> **Do not use these credentials in production** — replace them with your own.
 
-Open `.env` and fill in your values:
-
-| Variable | Description |
-|---|---|
-| `PORT` | Port to run the server (default: `5000`) |
-| `MONGODB_URI` | Your MongoDB connection string |
-| `JWT_SECRET` | Any long random string for signing tokens |
-| `JWT_EXPIRE` | Token expiry (e.g. `7d`) |
-| `NODE_ENV` | `development` or `production` |
-| `CLIENT_URL` | Frontend URL for CORS (e.g. `http://localhost:5173`) |
-
-### 4. Create the admin account
+## Create Admin Account
 
 ```bash
 npm run create-admin
 ```
 
-### 5. Start the server
+## Environment Variables (`.env`)
 
-```bash
-# Development (auto-reload)
-npm run dev
+| Variable | Description |
+|---|---|
+| `PORT` | Port to run the server (default: `5000`) |
+| `MONGODB_URI` | MongoDB connection string |
+| `JWT_SECRET` | Secret key for signing JWT tokens |
+| `JWT_EXPIRE` | Token expiry (e.g. `7d`) |
+| `NODE_ENV` | `development` or `production` |
+| `CLIENT_URL` | Frontend URL for CORS |
 
-# Production
-npm start
-```
+## Scripts
 
-The API will be available at `http://localhost:5000/api`.
+| Command | Description |
+|---|---|
+| `npm run dev` | Start with auto-reload (development) |
+| `npm start` | Start server (production) |
+| `npm run create-admin` | Create the admin account |
 
 ## API Overview
 
