@@ -20,24 +20,8 @@ connectDB();
 
 const app = express();
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:4173",
-  "https://stayease-front-end.onrender.com", // production frontend
-  process.env.CLIENT_URL, // override via env var if needed
-].filter(Boolean);
-
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // allow requests with no origin (mobile apps, curl, Postman)
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      callback(new Error(`CORS blocked: ${origin}`));
-    },
-    credentials: true,
-  }),
-);
+// Allow all origins — safe for this project (single-tenant PG app)
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
