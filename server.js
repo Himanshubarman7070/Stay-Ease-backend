@@ -1,48 +1,60 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import connectDB from './config/db.js';
-import { errorHandler, notFound } from './middleware/errorHandler.js';
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import connectDB from "./config/db.js";
+import { errorHandler, notFound } from "./middleware/errorHandler.js";
 
-import authRoutes from './routes/authRoutes.js';
-import tiffinRoutes from './routes/tiffinRoutes.js';
-import foodRoutes from './routes/foodRoutes.js';
-import menuRoutes from './routes/menuRoutes.js';
-import groceryRoutes from './routes/groceryRoutes.js';
-import complaintRoutes from './routes/complaintRoutes.js';
-import cancellationRoutes from './routes/cancellationRoutes.js';
-import adminRoutes from './routes/adminRoutes.js';
-import mealRoutes from './routes/mealRoutes.js';
-import paymentRoutes from './routes/paymentRoutes.js';
+import authRoutes from "./routes/authRoutes.js";
+import tiffinRoutes from "./routes/tiffinRoutes.js";
+import foodRoutes from "./routes/foodRoutes.js";
+import menuRoutes from "./routes/menuRoutes.js";
+import groceryRoutes from "./routes/groceryRoutes.js";
+import complaintRoutes from "./routes/complaintRoutes.js";
+import cancellationRoutes from "./routes/cancellationRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import mealRoutes from "./routes/mealRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 
 dotenv.config();
 connectDB();
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:4173",
+  "https://stayease-front-end.onrender.com", // production frontend
+  process.env.CLIENT_URL, // override via env var if needed
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      // allow requests with no origin (mobile apps, curl, Postman)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS blocked: ${origin}`));
+    },
     credentials: true,
-  })
+  }),
 );
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'StayEase API is running' });
+app.get("/api/health", (req, res) => {
+  res.json({ success: true, message: "StayEase API is running" });
 });
 
-app.use('/api/auth', authRoutes);
-app.use('/api/tiffin', tiffinRoutes);
-app.use('/api/food', foodRoutes);
-app.use('/api/menu', menuRoutes);
-app.use('/api/grocery', groceryRoutes);
-app.use('/api/complaints', complaintRoutes);
-app.use('/api/cancellations', cancellationRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/meals', mealRoutes);
-app.use('/api/payments', paymentRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/tiffin", tiffinRoutes);
+app.use("/api/food", foodRoutes);
+app.use("/api/menu", menuRoutes);
+app.use("/api/grocery", groceryRoutes);
+app.use("/api/complaints", complaintRoutes);
+app.use("/api/cancellations", cancellationRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/meals", mealRoutes);
+app.use("/api/payments", paymentRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
