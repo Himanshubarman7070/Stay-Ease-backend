@@ -1,32 +1,40 @@
-import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
 export const protect = async (req, res, next) => {
   let token;
-  if (req.headers.authorization?.startsWith('Bearer')) {
-    token = req.headers.authorization.split(' ')[1];
+  if (req.headers.authorization?.startsWith("Bearer")) {
+    token = req.headers.authorization.split(" ")[1];
   }
   if (!token) {
-    return res.status(401).json({ success: false, message: 'Not authorized' });
+    return res.status(401).json({ success: false, message: "Not authorized" });
   }
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id).select('-password');
+    const JWT_SECRET =
+      process.env.JWT_SECRET || "stayease_fallback_secret_change_in_prod";
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = await User.findById(decoded.id).select("-password");
     if (!req.user) {
-      return res.status(401).json({ success: false, message: 'User not found' });
+      return res
+        .status(401)
+        .json({ success: false, message: "User not found" });
     }
     if (req.user.isBlocked) {
-      return res.status(403).json({ success: false, message: 'Account blocked' });
+      return res
+        .status(403)
+        .json({ success: false, message: "Account blocked" });
     }
     next();
   } catch {
-    return res.status(401).json({ success: false, message: 'Invalid token' });
+    return res.status(401).json({ success: false, message: "Invalid token" });
   }
 };
 
-export const authorize = (...roles) => (req, res, next) => {
-  if (!roles.includes(req.user.role)) {
-    return res.status(403).json({ success: false, message: 'Access denied' });
-  }
-  next();
-};
+export const authorize =
+  (...roles) =>
+  (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+    next();
+  };
